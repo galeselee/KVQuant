@@ -38,7 +38,7 @@ def get_model(model, seqlen, maxseqlen):
         config.rope_scaling = {"type": "linear", "factor": scaling_factor}
 
     from transformers import AutoModelForCausalLM
-    model = AutoModelForCausalLM.from_pretrained(model, config=config, trust_remote_code=True, use_flash_attention_2=True, torch_dtype=torch.half)
+    model = AutoModelForCausalLM.from_pretrained(model, config=config, trust_remote_code=True, use_flash_attention_2=True, torch_dtype=torch.half).to("cuda:0")
 
     model.seqlen = seqlen  #TODO
     if config.vocab_size == 32001:
@@ -172,6 +172,7 @@ def llama_calibration(model, dataloader, dev, perchannel_match, pertensor_match,
             cache['i'] += 1
             cache['attention_mask'] = kwargs['attention_mask']
             cache['position_ids'] = kwargs['position_ids']
+            cache['position_embeddings'] = kwargs['position_embeddings']
             raise ValueError
     layers[0] = Catcher(layers[0])
     for batch in dataloader:
@@ -189,7 +190,7 @@ def llama_calibration(model, dataloader, dev, perchannel_match, pertensor_match,
     outs = torch.zeros_like(inps)
     attention_mask = cache['attention_mask']
     position_ids = cache['position_ids']
-
+    position_embeddings = cache['position_embeddings']
     print('Quantizing ...')
 
     quantizers = {}
@@ -244,11 +245,14 @@ def llama_calibration(model, dataloader, dev, perchannel_match, pertensor_match,
         for name in sequential_subset:
             handles.append(subset[name].register_forward_hook(add_batch(name)))
 
+        print(args.nsamples)
+
         for j in range(args.nsamples):
             outs[j] = layer(
                 inps[j].unsqueeze(0),
                 attention_mask=attention_mask,
-                position_ids=position_ids
+                position_ids=position_ids,
+                position_embeddings=position_embeddings·
             )[0]
 
         for h in handles:
