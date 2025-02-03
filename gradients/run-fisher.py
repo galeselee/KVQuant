@@ -6,6 +6,7 @@ from typing import Optional, Dict, Sequence
 import torch
 import torch.optim as optim
 import transformers
+import json
 from torch.utils.data import Dataset
 from transformers import Trainer
 
@@ -205,6 +206,29 @@ def get_modules_kv(layer):
         layer.self_attn.v_proj,
     ]
 
+
+def get_redpajama(seed, nsamples, seqlen, tokenizer):
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer, use_fast=False, trust_remote_code=True)
+    prompts = []
+    offline_json = '/data/zeyu/redpajama_sample_4096.json'
+    with open(offline_json, "r") as f:
+        prompts_json = json.load(f)
+        for key, value in prompts_json.items():
+            prompts.append(value["input"])
+
+    random.seed(seed)
+    prompts = random.sample(prompts, nsamples)
+
+    trainloader = []
+    for prompt in prompts:
+        inp = tokenizer(prompt, return_tensors="pt")["input_ids"][:, :seqlen]
+        tar = inp.clone()
+        tar[:, :-1] = -100
+        trainloader.append((inp, tar))
+
+    return trainloader
+
 # @profile
 def train():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -218,9 +242,10 @@ def train():
         from datautils import get_loaders
         print("Calibration with Wikitext2 ")
         dataloader, testloader = get_loaders(data_args.dataset,  model=model_args.model_name_or_path, seqlen=data_args.seqlen, seed=0)
+    elif data_args.dataset == "redpajama":
+        dataloader = get_redpajama(0, 128, 4096, model_args.model_name_or_path)
     else:
         raise NotImplementedError("Please define your own dataset here")
-
 
     # Set RoPE scaling factor
     import math
@@ -263,7 +288,8 @@ def train():
     grads = {}
 
     # main loop
-    for i, data in tqdm(enumerate(dataloader[:data_args.num_examples])):
+    # for i, data in tqdm(enumerate(dataloader[:data_args.num_examples])):
+    for j, data in tqdm(enumerate(dataloader[:data_args.num_examples])):
         data = data[0]
         x = data.cuda()
 
@@ -293,6 +319,8 @@ def train():
                 grads[f'v_proj{i}'] = vgrad
             else:
                 grads[f'v_proj{i}'] = torch.cat((grads[f'v_proj{i}'], vgrad), dim=1)
+
+        print(j)
 
     ## This is a hacky solution to save the gradients
     # where we overwrite all the weights in the model as the gradients
