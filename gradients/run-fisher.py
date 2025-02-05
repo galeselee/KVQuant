@@ -348,4 +348,6 @@ def train():
     model.save_pretrained(args.output_dir)
 
 if __name__ == "__main__":
+    torch.distributed.init_process_group("nccl")
+    print("init torch distributed")
     train()

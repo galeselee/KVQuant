@@ -52,6 +52,7 @@ def llama_eval(model, testenc, dev):
 
     testenc = testenc.input_ids
     nsamples = testenc.numel() // model.seqlen
+    print(nsamples)
 
     use_cache = model.config.use_cache
     model.config.use_cache = False
