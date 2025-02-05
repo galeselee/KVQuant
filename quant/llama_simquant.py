@@ -320,7 +320,7 @@ if __name__ == '__main__':
         help='Whether to run calibration to quantize the KV cache.'
     )
     parser.add_argument(
-        '--abits', type=int, default=16, choices=[2, 3, 4, 5, 16],
+        '--abits', type=int, default=16, choices=[1, 2, 3, 4, 5, 16],
         help='#bits to use for quantization; use 16 for evaluating base model.'
     )
     parser.add_argument(
@@ -376,7 +376,7 @@ if __name__ == '__main__':
         help='Load quantized model.'
     )
     parser.add_argument(
-        '--dataset', type=str, choices=['wikitext2', 'c4'], default='wikitext2',
+        '--dataset', type=str, choices=['wikitext2', 'c4', 'redpajama'], default='wikitext2',
         help='Which dataset to use for calibration / evaluation.'
     )
     

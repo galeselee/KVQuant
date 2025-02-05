@@ -6,6 +6,7 @@ def set_seed(seed):
     torch.random.manual_seed(seed)
 
 def get_wikitext2(nsamples, seed, seqlen, model):
+    print("get_wikitext2")
     from datasets import load_dataset
     traindata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='train')
     testdata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='test')
@@ -50,12 +51,13 @@ def get_ptb(nsamples, seed, seqlen, model):
     return trainloader, testenc
 
 def get_c4(nsamples, seed, seqlen, model):
+    print("get_c4")
     from datasets import load_dataset
     traindata = load_dataset(
-        'allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train', use_auth_token=False
+        'allenai/c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
     )
     valdata = load_dataset(
-        'allenai/c4', 'allenai--c4', data_files={'validation': 'en/c4-validation.00000-of-00008.json.gz'}, split='validation', use_auth_token=False
+        'allenai/c4', data_files={'validation': 'en/c4-validation.00000-of-00008.json.gz'}, split='validation'
     )
 
     from transformers import AutoTokenizer
@@ -122,10 +124,10 @@ def get_ptb_new(nsamples, seed, seqlen, model):
 def get_c4_new(nsamples, seed, seqlen, model):
     from datasets import load_dataset
     traindata = load_dataset(
-        'allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
+        'allenai/c4',  data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
     )
     valdata = load_dataset(
-        'allenai/c4', 'allenai--c4', data_files={'validation': 'en/c4-validation.00000-of-00008.json.gz'}, split='validation'
+        'allenai/c4', data_files={'validation': 'en/c4-validation.00000-of-00008.json.gz'}, split='validation'
     )
 
     from transformers import AutoTokenizer
@@ -157,6 +159,29 @@ def get_c4_new(nsamples, seed, seqlen, model):
 
     return trainloader, valenc
 
+def get_redpajama(seed, nsamples, seqlen, tokenizer):
+    print("get_redpajama")
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer, use_fast=False, trust_remote_code=True)
+    prompts = []
+    offline_json = '/home/aiscuser/data/redpajama_sample_4096.json'
+    with open(offline_json, "r") as f:
+        prompts_json = json.load(f)
+        for key, value in prompts_json.items():
+            prompts.append(value["input"])
+
+    random.seed(seed)
+    prompts = random.sample(prompts, nsamples)
+
+    trainloader = []
+    for prompt in prompts:
+        inp = tokenizer(prompt, return_tensors="pt")["input_ids"][:, :seqlen]
+        tar = inp.clone()
+        tar[:, :-1] = -100
+        trainloader.append((inp, tar))
+
+    return trainloader, None
+
 def get_loaders(
     name, nsamples=128, seed=0, seqlen=2048, model=''
 ):
@@ -170,3 +195,5 @@ def get_loaders(
         if 'new' in name:
             return get_c4_new(nsamples, seed, seqlen, model)
         return get_c4(nsamples, seed, seqlen, model)
+    if 'redpajama' in name:
+        return get_redpajama(seed, nsamples, seqlen, model)
