@@ -38,7 +38,29 @@ def get_model(model, seqlen, maxseqlen):
         config.rope_scaling = {"type": "linear", "factor": scaling_factor}
 
     from transformers import AutoModelForCausalLM
-    model = AutoModelForCausalLM.from_pretrained(model, config=config, trust_remote_code=True, use_flash_attention_2=True, torch_dtype=torch.half).to("cuda:0")
+    model = AutoModelForCausalLM.from_pretrained(model, config=config, use_flash_attention_2=True, torch_dtype=torch.half)
+    def get_model_weights_size(model):
+        weights_size = {}
+        total_size = 0
+        for name, param in model.named_parameters():
+            size_in_bytes = param.numel() * param.element_size()
+            size_in_mb = size_in_bytes / (1024 ** 2)  # Convert to MB
+            weights_size[name] = size_in_mb
+            total_size += size_in_mb
+        return weights_size, total_size
+
+    def get_model_memory_usage(model):
+        param_size = 0
+        for param in model.parameters():
+            param_size += param.nelement() * param.element_size()  # 参数总字节数
+        buffer_size = 0
+        for buffer in model.buffers():
+            buffer_size += buffer.nelement() * buffer.element_size()  # 缓冲区总字节数
+        total_size = param_size + buffer_size
+        return param_size, buffer_size, total_size
+
+    weights_size, total_size = get_model_weights_size(model)
+    model=model.cuda()
 
     model.seqlen = seqlen  #TODO
     if config.vocab_size == 32001:
@@ -395,7 +417,7 @@ if __name__ == '__main__':
         help='Clamp w/ integer quantization'
     )
 
-    DEV = torch.device('cuda:0')
+    DEV = torch.device('cuda')
 
     args = parser.parse_args()
 

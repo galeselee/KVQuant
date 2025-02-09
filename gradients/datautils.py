@@ -13,14 +13,7 @@ def get_wikitext2(nsamples, seed, seqlen, model):
     testdata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='test')
 
     from transformers import AutoTokenizer 
-    print('here1')
-    try:
-        print('here2')
-        tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False, trust_remote_code=True, batched=True)
-    except:
-        print('here3')
-        tokenizer = AutoTokenizer.from_pretrained(model, use_fast=True, trust_remote_code=True, batched=True)
-    print('here4')
+    tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False, trust_remote_code=True)
 
     trainenc = tokenizer("\n\n".join(traindata['text']), return_tensors='pt')
     testenc = tokenizer("\n\n".join(testdata['text']), return_tensors='pt')
