@@ -377,7 +377,7 @@ if __name__ == '__main__':
         help='Load quantized model.'
     )
     parser.add_argument(
-        '--dataset', type=str, choices=['wikitext2', 'c4'], default='c4',
+        '--dataset', type=str, choices=['wikitext2', 'c4', "redpajama"], default='wikitext2',
         help='Which dataset to use for calibration / evaluation.'
     )
     

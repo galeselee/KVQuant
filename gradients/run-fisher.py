@@ -7,6 +7,7 @@ import torch
 import torch.optim as optim
 import transformers
 import json
+import random
 from torch.utils.data import Dataset
 from transformers import Trainer
 
@@ -226,6 +227,8 @@ def get_redpajama(seed, nsamples, seqlen, tokenizer):
         tar = inp.clone()
         tar[:, :-1] = -100
         trainloader.append((inp, tar))
+        print(tar)
+
 
     return trainloader
 

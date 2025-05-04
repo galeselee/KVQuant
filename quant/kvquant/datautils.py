@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+import json
+import random
 
 def set_seed(seed):
     np.random.seed(seed)
@@ -155,6 +157,28 @@ def get_c4_new(nsamples, seed, seqlen, model):
 
     return trainloader, valenc
 
+def get_redpajama(nsamples, seed, seqlen, model):
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False, trust_remote_code=True)
+    prompts = []
+    offline_json = '/data/zeyu/redpajama_sample_4096.json'
+    with open(offline_json, "r") as f:
+        prompts_json = json.load(f)
+        for key, value in prompts_json.items():
+            prompts.append(value["input"])
+
+    random.seed(seed)
+    prompts = random.sample(prompts, nsamples)
+
+    trainloader = []
+    for prompt in prompts:
+        inp = tokenizer(prompt, return_tensors="pt")["input_ids"][:, :seqlen]
+        tar = inp.clone()
+        tar[:, :-1] = -100
+        trainloader.append((inp, tar))
+
+    return trainloader, None
+
 def get_loaders(
     name, nsamples=128, seed=0, seqlen=2048, model=''
 ):
@@ -168,3 +192,6 @@ def get_loaders(
         if 'new' in name:
             return get_c4_new(nsamples, seed, seqlen, model)
         return get_c4(nsamples, seed, seqlen, model)
+
+    if "redpajama" in name:
+        return get_redpajama(nsamples, seed, seqlen, model)
